@@ -1,122 +1,194 @@
-// utils/sessionUtils.js
-
-// Storage for session data
-const sessionState = {
-  cookies: null,
-  localStorage: null,
-  sessionStorage: null,
-};
+// utils/sessions/sessionManager.js
 
 /**
- * Sets default region and constructs dashboard URL
- * @param {string} region - Region code (e.g., 'en-us')
- * @returns {string} Constructed dashboard URL
+ * @typedef {Object} SessionConfig
+ * @property {string} baseUrl - Base URL for the application
+ * @property {string} defaultRegion - Default region code (e.g., 'en-us')
+ * @property {Object} routes - Route configurations
+ * @property {string} routes.dashboard - Dashboard route pattern
+ * @property {Function} onError - Custom error handler
  */
-export const getDashboardUrl = (region = "en-us") => `/${region}/dashboard`;
 
 /**
- * Performs login and navigates to dashboard
- * @param {Object} params - Login parameters
- * @param {string} params.username - Username for login
- * @param {string} params.password - Password for login
- * @param {string} [params.region='en-us'] - Region code
- * @param {string} [params.dashboardUrl] - Optional custom dashboard URL
+ * Session manager for handling login state and session data
  */
-export const loginAndNavigate = ({
-  username,
-  password,
-  region = "en-us",
-  dashboardUrl = getDashboardUrl(region),
-}) => {
-  cy.log(`Logging in user: ${username} for region: ${region}`);
-  cy.siteLogin(username, password, region);
-  cy.visit(dashboardUrl);
-};
+class SessionManager {
+  constructor(config = {}) {
+    this.config = {
+      baseUrl: config.baseUrl || Cypress.config("baseUrl"),
+      defaultRegion: config.defaultRegion || "en-us",
+      routes: {
+        dashboard: config.routes?.dashboard || "/{region}/dashboard",
+        ...config.routes,
+      },
+      onError: config.onError || this.defaultErrorHandler,
+    };
 
-/**
- * Saves current session data (cookies, localStorage, sessionStorage)
- * @returns {Cypress.Chainable}
- */
-export const saveSessionData = () => {
-  cy.log("Saving session data");
+    this.sessionData = {
+      cookies: null,
+      localStorage: null,
+      sessionStorage: null,
+    };
+  }
 
-  return cy.getCookies().then((cookies) => {
-    sessionState.cookies = cookies;
+  /**
+   * Default error handler
+   * @param {Error} error - Error object
+   * @private
+   */
+  defaultErrorHandler(error) {
+    cy.log(`Session Error: ${error.message}`);
+    throw error;
+  }
 
-    return cy.window().then((win) => {
-      sessionState.localStorage = { ...win.localStorage };
-      sessionState.sessionStorage = { ...win.sessionStorage };
-      cy.log("Session data saved successfully");
-    });
-  });
-};
+  /**
+   * Get dashboard URL for specific region
+   * @param {string} region - Region code
+   * @returns {string} Dashboard URL
+   */
+  getDashboardUrl(region = this.config.defaultRegion) {
+    return this.config.routes.dashboard.replace("{region}", region);
+  }
 
-/**
- * Restores previously saved session data
- * @returns {Cypress.Chainable}
- */
-export const restoreSessionData = () => {
-  cy.log("Restoring session data");
+  /**
+   * Perform login and navigate to dashboard
+   * @param {Object} credentials - Login credentials
+   * @param {string} credentials.username - Username
+   * @param {string} credentials.password - Password
+   * @param {Object} options - Login options
+   * @param {string} options.region - Region code
+   * @param {boolean} options.navigate - Whether to navigate to dashboard
+   * @returns {Promise<void>}
+   */
+  async login(
+    { username, password },
+    { region = this.config.defaultRegion, navigate = true } = {}
+  ) {
+    try {
+      // Perform login
+      await cy.siteLogin(username, password, region);
 
-  // Handle any uncaught exceptions
-  Cypress.on("uncaught:exception", (err) => {
-    cy.log(`Handled uncaught exception: ${err.message}`);
-    return false;
-  });
+      // Save session immediately after login
+      await this.saveSession();
 
-  return cy.clearCookies().then(() => {
-    // Restore cookies if they exist
-    if (sessionState.cookies) {
-      sessionState.cookies.forEach((cookie) => {
-        cy.setCookie(cookie.name, cookie.value, {
-          domain: cookie.domain,
-          path: cookie.path,
-          secure: cookie.secure,
-          httpOnly: cookie.httpOnly,
-          expiry: cookie.expires,
-        });
-      });
+      // Navigate to dashboard if requested
+      if (navigate) {
+        await cy.visit(this.getDashboardUrl(region));
+      }
+    } catch (error) {
+      this.config.onError(error);
     }
+  }
 
-    // Restore storage data
-    return cy.window().then((win) => {
-      // Restore localStorage
-      if (sessionState.localStorage) {
-        Object.entries(sessionState.localStorage).forEach(([key, value]) => {
-          win.localStorage.setItem(key, value);
+  /**
+   * Save current session data
+   * @returns {Promise<void>}
+   */
+  async saveSession() {
+    try {
+      // Save cookies
+      await cy.getCookies().then((cookies) => {
+        this.sessionData.cookies = cookies;
+      });
+
+      // Save storage data
+      await cy.window().then((win) => {
+        this.sessionData.localStorage = { ...win.localStorage };
+        this.sessionData.sessionStorage = { ...win.sessionStorage };
+      });
+
+      cy.log("Session data saved successfully");
+    } catch (error) {
+      this.config.onError(error);
+    }
+  }
+
+  /**
+   * Restore saved session data
+   * @returns {Promise<void>}
+   */
+  async restoreSession() {
+    try {
+      // Clear existing cookies
+      await cy.clearCookies();
+
+      // Restore cookies if they exist
+      if (this.sessionData.cookies) {
+        this.sessionData.cookies.forEach((cookie) => {
+          cy.setCookie(cookie.name, cookie.value, {
+            domain: cookie.domain,
+            path: cookie.path,
+            secure: cookie.secure,
+            httpOnly: cookie.httpOnly,
+            expiry: cookie.expires,
+          });
         });
       }
 
-      // Restore sessionStorage
-      if (sessionState.sessionStorage) {
-        Object.entries(sessionState.sessionStorage).forEach(([key, value]) => {
-          win.sessionStorage.setItem(key, value);
-        });
-      }
+      // Restore storage data
+      await cy.window().then((win) => {
+        // Restore localStorage
+        if (this.sessionData.localStorage) {
+          Object.entries(this.sessionData.localStorage).forEach(
+            ([key, value]) => {
+              win.localStorage.setItem(key, value);
+            }
+          );
+        }
 
-      cy.log("Session data restored successfully");
-    });
-  });
-};
+        // Restore sessionStorage
+        if (this.sessionData.sessionStorage) {
+          Object.entries(this.sessionData.sessionStorage).forEach(
+            ([key, value]) => {
+              win.sessionStorage.setItem(key, value);
+            }
+          );
+        }
+      });
 
-/**
- * Clears all session data
- * @returns {Cypress.Chainable}
- */
-export const clearSessionData = () => {
-  cy.log("Clearing session data");
+      cy.log("Session restored successfully");
+    } catch (error) {
+      this.config.onError(error);
+    }
+  }
 
-  return cy.clearCookies().then(() => {
-    return cy.window().then((win) => {
-      win.localStorage.clear();
-      win.sessionStorage.clear();
+  /**
+   * Clear all session data
+   * @returns {Promise<void>}
+   */
+  async clearSession() {
+    try {
+      await cy.clearCookies();
+      await cy.window().then((win) => {
+        win.localStorage.clear();
+        win.sessionStorage.clear();
+      });
+      this.sessionData = {
+        cookies: null,
+        localStorage: null,
+        sessionStorage: null,
+      };
+      cy.log("Session cleared successfully");
+    } catch (error) {
+      this.config.onError(error);
+    }
+  }
+}
 
-      // Reset session state
-      sessionState.cookies = null;
-      sessionState.localStorage = null;
-      sessionState.sessionStorage = null;
+// utils/sessions/index.js
+export const createSessionManager = (config) => new SessionManager(config);
 
-      cy.log("Session data cleared successfully");
-    });
-  });
+// Example usage configuration file
+// utils/sessions/config.js
+export const defaultSessionConfig = {
+  baseUrl: "https://your-app.com",
+  defaultRegion: "en-us",
+  routes: {
+    dashboard: "/{region}/dashboard",
+    profile: "/{region}/profile",
+  },
+  onError: (error) => {
+    cy.log(`Custom error handler: ${error.message}`);
+    throw error;
+  },
 };

@@ -17,3 +17,5 @@
 
 // cypress/support/e2e.js
 import './commands'
+import { setBaseUrl } from "../config/config.js";
+setBaseUrl();

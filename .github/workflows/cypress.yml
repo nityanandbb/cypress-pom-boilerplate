@@ -1,0 +1,90 @@
+name: Run Cypress Tests
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch: # Trigger manually if needed
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # Clear npm cache
+      - name: Clear npm cache
+        run: npm cache clean --force
+
+      # Install cypress-mochawesome-reporter if not already installed
+      - name: Install cypress-mochawesome-reporter
+        run: |
+          if ! npm ls cypress-mochawesome-reporter; then
+            npm install --save-dev cypress-mochawesome-reporter
+          fi
+
+      # Setup Node.js and install dependencies if version has changed
+      - name: Setup Node.js and install dependencies
+        if: needs.setup.outputs.versionChanged == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      # Install dependencies if version has changed
+      - name: Install dependencies
+        if: needs.setup.outputs.versionChanged == 'true'
+        run: npm install
+
+      # Install Allure commandline
+      - name: install Allure commandline
+        run: npm install --save-dev allure-commandline
+
+      # Install Allure Reporter
+      - name: Install Allure Reporter
+        run: npm i -D allure-cypress@2.14.0
+
+      # Clean Allure Reporter
+      - name: Clean Allure Reporter
+        run: npx allure generate allure-results --clean
+
+      # Run Cypress tests
+      - name: Run Cypress tests
+        run: npm run cypress:run --if-present
+
+      # Wait for HTML report to appear (sleep for 30 seconds)
+      - name: Wait for HTML report
+        run: |
+          timeout=30  # Timeout in seconds
+          while [ ! -f ./mochawesome-report/index.html ]; do
+            sleep 1
+            ((timeout--))
+            if [ $timeout -eq 0 ]; then
+              echo "Timeout reached, HTML report not found."
+              exit 1
+            fi
+          done
+  
+      # Upload Mochawesome report
+      - name: Upload Mochawesome report
+        if: always()
+        uses: actions/upload-artifact@v2
+        with:
+          name: mochawesome-report
+          path: mochawesome-report
+
+      # Set execute permissions for export script
+      - name: Set execute permissions for export script
+        run: chmod +x export_allure_report.sh
+
+      # Export Allure Report
+      - name: Export Allure Report
+        run: ./export_allure_report.sh
+
+      # Upload Allure Report as Artifact
+      - name: Upload Allure Report as Artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: allure-report
+          path: allure-report

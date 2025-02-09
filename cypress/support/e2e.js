@@ -17,4 +17,5 @@
 
 // cypress/support/e2e.js
 import './commands'
-import 'cypress-grep'  // New import syntax
+import { setBaseUrl } from "../config/config.js";
+setBaseUrl();

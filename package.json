@@ -1,0 +1,31 @@
+{
+  "name": "tags",
+  "version": "1.0.0",
+  "main": "index.js",
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "cypress": "^14.0.0",
+    "@cypress/xpath": "^2.0.3",
+    "cypress-cucumber-preprocessor": "^4.3.1",
+    "cypress-grep": "^3.0.4"
+  },
+  "overrides": {
+    "cypress-grep": {
+      "cypress": "^14.0.0"
+    }
+  },
+  "scripts": {
+    "cy:smoke": "cypress run --env TEST_TAGS=smoke",
+    "cy:sanity": "cypress run --env TEST_TAGS=sanity",
+    "cy:regression": "cypress run --env TEST_TAGS=regression",
+    "cy:p0": "cypress run --env TEST_TAGS=p0",
+    "cy:p1": "cypress run --env TEST_TAGS=p1",
+    "cy:smoke-p0": "cypress run --env TEST_TAGS=smoke,p0",
+    "cy:sanity-p1": "cypress run --env TEST_TAGS=sanity,p1",
+    "test:critical": "cypress run --env TEST_TAGS=smoke,p0",
+    "test:high": "cypress run --env TEST_TAGS=sanity,p1"
+}
+
+}

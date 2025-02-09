@@ -1,9 +1,9 @@
 {
-  "name": "tags",
+  "name": "cypress-pom-boilerplate",
   "version": "1.0.0",
   "main": "index.js",
   "keywords": [],
-  "author": "",
+  "author": "Nityanand Bharati",
   "license": "ISC",
   "devDependencies": {
     "cypress": "^14.0.0",
@@ -26,6 +26,5 @@
     "cy:sanity-p1": "cypress run --env TEST_TAGS=sanity,p1",
     "test:critical": "cypress run --env TEST_TAGS=smoke,p0",
     "test:high": "cypress run --env TEST_TAGS=sanity,p1"
-}
-
+  }
 }

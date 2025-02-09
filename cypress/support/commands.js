@@ -49,3 +49,12 @@ Cypress.Commands.add('filterTests', () => {
         }
     });
 });
+
+// Importing all the util functions.
+
+// cypress/support/commands.js
+import * as utils from "./utilsLoader";
+
+Object.keys(utils).forEach((key) => {
+  Cypress.Commands.add(key, utils[key]);
+});

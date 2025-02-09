@@ -1,0 +1,17 @@
+Planned Analysis >> Version 1 release.
+ETA : 4 weeks
+ POM model
+Env setup
+Features and tags.
+Viewports.
+Utils > reusable codes. .... do spike on standards of cypress frameworks and market needs.
+utility >> csv, xlsx, json supports adn implementation.
+reporting.
+Adv report if possible
+Config tags for test like high low, medium smoke sanity, 
+latest features diff  on dev stage or prod >> exclude and include tests on env for new or modified module.
+shell script analysis for setup.
+github pipelines.
+Web server support.
+css web elements management
+Additional configs if req for system supports like mac, windows.

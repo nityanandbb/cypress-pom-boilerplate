@@ -2,9 +2,9 @@
 const environments = {
   dev: "test.dev.com ",
   stage: "test.stg.com",
-  prod: "https://www.qed42.com/",
-  local: "test.docsal3000.com"
-}
+  prod: "https://tutorialsninja.com/demo",
+  local: "test.docsal3000.com",
+};
 
 function setBaseUrl() {
   const env = process.env.CYPRESS_ENV || "prod";

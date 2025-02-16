@@ -7,7 +7,7 @@ module.exports = defineConfig({
            // implement node event listeners here
           return config
         },
-        baseUrl: 'https://example.cypress.io',
+       // baseUrl: 'https://example.cypress.io',
         supportFile: 'cypress/support/e2e.js',
         specPattern: 'cypress/e2e/**/*.cy.{js,jsx,ts,tsx}',
         viewportWidth: 1280,

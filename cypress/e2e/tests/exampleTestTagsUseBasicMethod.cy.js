@@ -15,6 +15,7 @@ describe('T2 Authentication Tests', () => {
         cy.get('#password').type('password123');
         cy.get('#loginBtn').click();
         cy.url().should('include', '/dashboard');
+
     });
 
     // Example 2: Sanity test with High Priority

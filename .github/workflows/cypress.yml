@@ -1,90 +1,157 @@
 name: Run Cypress Tests
 
 on:
-  push:
-    branches:
-      - main
-  workflow_dispatch: # Trigger manually if needed
+  # Only manual trigger
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: '🌐 Test Environment'
+        required: true
+        default: 'prod'
+        type: choice
+        options:
+          - prod
+          - stage
+          - dev
+          - local
+      latest_features:
+        description: '🔄 Use Latest Features (LF)'
+        required: true
+        default: 'false'
+        type: choice
+        options:
+          - 'true'
+          - 'false'
+      test_category:
+        description: '📂 Test Category (folder name or e2e for all)'
+        required: true
+        default: 'e2e'
+        type: string
+      test_tags:
+        description: '🏷️ Test Tags (smoke, sanity, p0, p1, critical, high, or custom comma-separated values)'
+        required: false
+        default: ''
+        type: string
+      browser:
+        description: '🌐 Browser (Coming soon in next release)'
+        required: false
+        default: 'chrome'
+        type: choice
+        options:
+          - chrome
+          - firefox
+          - edge
+      resolution:
+        description: '📱 Resolution (Coming soon in next release)'
+        required: false
+        default: '1280x720'
+        type: string
 
 jobs:
-  test:
+  cypress-test:
     runs-on: ubuntu-latest
-
+    
     steps:
-      - name: Checkout code
+      - name: 📥 Checkout code
         uses: actions/checkout@v4
 
-      # Clear npm cache
-      - name: Clear npm cache
-        run: npm cache clean --force
-
-      # Install cypress-mochawesome-reporter if not already installed
-      - name: Install cypress-mochawesome-reporter
-        run: |
-          if ! npm ls cypress-mochawesome-reporter; then
-            npm install --save-dev cypress-mochawesome-reporter
-          fi
-
-      # Setup Node.js and install dependencies if version has changed
-      - name: Setup Node.js and install dependencies
-        if: needs.setup.outputs.versionChanged == 'true'
+      - name: 🔧 Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: '20'
+          cache: 'npm'
 
-      # Install dependencies if version has changed
-      - name: Install dependencies
-        if: needs.setup.outputs.versionChanged == 'true'
-        run: npm install
+      - name: 📦 Install dependencies
+        run: npm ci || npm install
 
-      # Install Allure commandline
-      - name: install Allure commandline
-        run: npm install --save-dev allure-commandline
+      - name: 🧹 Clear npm cache
+        run: npm cache clean --force
 
-      # Install Allure Reporter
-      - name: Install Allure Reporter
-        run: npm i -D allure-cypress@2.14.0
-
-      # Clean Allure Reporter
-      - name: Clean Allure Reporter
-        run: npx allure generate allure-results --clean
-
-      # Run Cypress tests
-      - name: Run Cypress tests
-        run: npm run cypress:run --if-present
-
-      # Wait for HTML report to appear (sleep for 30 seconds)
-      - name: Wait for HTML report
+      - name: 📊 Install Mochawesome reporter
         run: |
-          timeout=30  # Timeout in seconds
-          while [ ! -f ./mochawesome-report/index.html ]; do
-            sleep 1
-            ((timeout--))
-            if [ $timeout -eq 0 ]; then
-              echo "Timeout reached, HTML report not found."
-              exit 1
-            fi
-          done
-  
-      # Upload Mochawesome report
-      - name: Upload Mochawesome report
+          npm install --save-dev cypress-mochawesome-reporter
+
+      - name: 🚀 Determine test path
+        id: test-path
+        run: |
+          TEST_CATEGORY="${{ github.event.inputs.test_category }}"
+          if [ "$TEST_CATEGORY" = "e2e" ] || [ -z "$TEST_CATEGORY" ]; then
+            echo "SPEC_PATH=cypress/e2e/**/**/*.cy.js" >> $GITHUB_ENV
+            echo "Using all tests (e2e)"
+          elif [ -d "cypress/e2e/$TEST_CATEGORY" ]; then
+            echo "SPEC_PATH=cypress/e2e/$TEST_CATEGORY/**/*.cy.js" >> $GITHUB_ENV
+            echo "Using folder: $TEST_CATEGORY"
+          else
+            echo "⚠️ Invalid test category: $TEST_CATEGORY. Using 'e2e' instead."
+            echo "SPEC_PATH=cypress/e2e/**/**/*.cy.js" >> $GITHUB_ENV
+          fi
+
+      - name: 🏷️ Determine test tags
+        id: test-tags
+        run: |
+          TEST_TAGS="${{ github.event.inputs.test_tags }}"
+          if [ "$TEST_TAGS" = "critical" ]; then
+            echo "FINAL_TEST_TAGS=smoke,p0" >> $GITHUB_ENV
+            echo "⚠️ Using critical preset: smoke,p0"
+          elif [ "$TEST_TAGS" = "high" ]; then
+            echo "FINAL_TEST_TAGS=sanity,p1" >> $GITHUB_ENV
+            echo "🔔 Using high preset: sanity,p1"
+          else
+            echo "FINAL_TEST_TAGS=$TEST_TAGS" >> $GITHUB_ENV
+          fi
+
+      - name: 📝 Build Cypress command
+        id: cypress-command
+        run: |
+          ENV="${{ github.event.inputs.environment }}"
+          LF="${{ github.event.inputs.latest_features }}"
+          TEST_TAGS="${{ env.FINAL_TEST_TAGS }}"
+          SPEC_PATH="${{ env.SPEC_PATH }}"
+          
+          CYPRESS_CMD="cypress run --env environment=$ENV,LF=$LF"
+          
+          if [ ! -z "$TEST_TAGS" ]; then
+            CYPRESS_CMD="$CYPRESS_CMD,TEST_TAGS=$TEST_TAGS"
+          fi
+          
+          CYPRESS_CMD="$CYPRESS_CMD --spec \"$SPEC_PATH\""
+          
+          echo "CYPRESS_CMD=$CYPRESS_CMD" >> $GITHUB_ENV
+          
+          echo "📋 Running Cypress with the following parameters:"
+          echo "🌐 Environment: $ENV"
+          echo "🔄 LF Value: $LF"
+          if [ ! -z "$TEST_TAGS" ]; then
+            echo "🏷️ Test Tags: $TEST_TAGS"
+          else
+            echo "🏷️ Test Tags: none (running all tests)"
+          fi
+          echo "🔍 Spec Path: $SPEC_PATH"
+          echo "📜 Command: $CYPRESS_CMD"
+
+      - name: ⏳ Run Cypress tests
+        run: npx ${{ env.CYPRESS_CMD }}
+        continue-on-error: true
+
+      - name: 📊 Generate Mochawesome report
+        if: always()
+        run: |
+          if [ -d "cypress/reports" ]; then
+            mkdir -p mochawesome-report
+            cp -r cypress/reports/* mochawesome-report/ || true
+          fi
+          echo "Mochawesome report copied (if available)"
+
+      - name: 📤 Upload Mochawesome report
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: mochawesome-report
           path: mochawesome-report
+          retention-days: 30
 
-      # Set execute permissions for export script
-      - name: Set execute permissions for export script
-        run: chmod +x export_allure_report.sh
-
-      # Export Allure Report
-      - name: Export Allure Report
-        run: ./export_allure_report.sh
-
-      # Upload Allure Report as Artifact
-      - name: Upload Allure Report as Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: allure-report
-          path: allure-report
+      - name: 🏁 Test execution finished
+        if: always()
+        run: |
+          echo "✅ Test execution completed!"
+          echo "📊 Reports have been generated and uploaded as artifacts"

@@ -6,8 +6,8 @@
   "author": "Nityanand Bharati",
   "license": "ISC",
   "devDependencies": {
-    "cypress": "^14.0.0",
     "@cypress/xpath": "^2.0.3",
+    "cypress": "^14.0.0",
     "cypress-cucumber-preprocessor": "^4.3.1",
     "cypress-grep": "^3.0.4"
   },
@@ -25,6 +25,22 @@
     "cy:smoke-p0": "cypress run --env TEST_TAGS=smoke,p0",
     "cy:sanity-p1": "cypress run --env TEST_TAGS=sanity,p1",
     "test:critical": "cypress run --env TEST_TAGS=smoke,p0",
-    "test:high": "cypress run --env TEST_TAGS=sanity,p1"
+    "test:high": "cypress run --env TEST_TAGS=sanity,p1",
+    "examples below": "<------------------------ Test examples below ----------------------> ",
+    "prod": "./run-cypress.sh prod",
+    "stage": "./run-cypress.sh stage",
+    "dev": "./run-cypress.sh dev",
+    "test": "./run-cypress.sh",
+    "open": "./open-cypress.sh",
+    "open:prod": "./open-cypress.sh prod",
+    "open:stage": "./open-cypress.sh stage",
+    "open:dev": "./open-cypress.sh dev",
+    "open:local": "./open-cypress.sh local",
+    "open:prod:lf": "./open-cypress.sh prod true",
+    "open:stage:lf": "./open-cypress.sh stage true",
+    "open:dev:lf": "./open-cypress.sh dev true"
+  },
+  "dependencies": {
+    "cypress-mochawesome-reporter": "^3.8.2"
   }
 }

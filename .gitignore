@@ -157,3 +157,6 @@ Thumbs.db
 # Editor-specific files
 .idea/
 .vscode/
+
+#reports.
+cypress/reports/

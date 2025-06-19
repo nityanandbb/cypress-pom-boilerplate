@@ -78,6 +78,6 @@ log_green "🔧 Configuration complete!"
 log_yellow "⏳ Opening Cypress..."
 
 # Launch Cypress in open mode
-cypress open --env environment=$ENV,LF=$LF
+npx cypress open --env environment=$ENV,LF=$LF
 
 log_green "✅ Cypress launched successfully!"

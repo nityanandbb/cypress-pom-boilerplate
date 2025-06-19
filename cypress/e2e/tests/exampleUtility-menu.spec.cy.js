@@ -1,4 +1,5 @@
 // cypress/e2e/navigation/utility-menu.spec.js
+ // Demo
 import HomePage from "../pages/exampleHomePage";
 
 describe("Utility Menu Structure and Navigation", () => {

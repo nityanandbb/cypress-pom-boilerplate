@@ -21,9 +21,7 @@ describe("Login Session Tests", () => {
       password: "testpass",
       region: "en-us",
     });
-    
-    
-   
+     
     // Save session after successful login
     saveSessionData();
 

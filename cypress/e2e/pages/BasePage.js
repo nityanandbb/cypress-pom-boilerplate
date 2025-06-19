@@ -26,6 +26,7 @@ class BasePage {
 
     waitForElement(selector) {
         return this.getElement(selector);
+        // test
     }
 }
 

@@ -1,0 +1,35 @@
+name: Run Cypress Tests From Folder
+
+on:
+  workflow_dispatch:
+    inputs:
+      test_folder:
+        description: "Enter Cypress test folder (example: pages,login, cart ). Leave empty to run all tests."
+        required: false
+        default: ""
+
+jobs:
+  cypress-run:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Run Cypress tests
+        run: |
+          if [ -z "${{ github.event.inputs.test_folder }}" ]; then
+            echo "Running all Cypress tests"
+            npx cypress run
+          else
+            echo "Running tests from folder: ${{ github.event.inputs.test_folder }}"
+            npx cypress run --spec "cypress/e2e/${{ github.event.inputs.test_folder }}/**/*.cy.js"
+          fi
